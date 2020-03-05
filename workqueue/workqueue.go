@@ -12,19 +12,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alexeldeib/funchan/priorityqueue"
 	"github.com/alexeldeib/funchan/queue"
 	"github.com/alexeldeib/funchan/timedqueue"
 )
 
 type WorkQueue struct {
-	waiting *timedqueue.TimedQueue
+	waiting *priorityqueue.PriorityQueue
 	ready   queue.Queue
 	out     chan interface{}
 }
 
 func NewWorkQueue() *WorkQueue {
 	return &WorkQueue{
-		waiting: timedqueue.NewTimedQueue(),
+		waiting: priorityqueue.NewPriorityQueue(),
 		ready:   queue.NewQueue(),
 		out:     make(chan interface{}, 1),
 	}
@@ -52,10 +53,7 @@ func (w *WorkQueue) Start(ctx context.Context) error {
 }
 
 func (w *WorkQueue) Push(item interface{}, when time.Time) {
-	w.waiting.Push(&timedqueue.Item{
-		Value:    item,
-		Priority: when,
-	})
+	w.waiting.Push(timedqueue.NewItem(item, when))
 }
 
 func (w *WorkQueue) Pop() interface{} {
