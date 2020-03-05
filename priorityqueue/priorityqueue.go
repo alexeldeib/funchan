@@ -2,6 +2,7 @@ package priorityqueue
 
 import (
 	"container/heap"
+	"context"
 )
 
 type Heapable interface {
@@ -10,35 +11,61 @@ type Heapable interface {
 }
 
 type PriorityQueue struct {
-	queue priorityQueue
-}
-
-type priorityQueue struct {
-	items []Heapable
+	queue  priorityQueue
+	pushCh chan interface{}
+	popCh  chan chan interface{}
 }
 
 func NewPriorityQueue() *PriorityQueue {
-	return &PriorityQueue{}
+	pq := &PriorityQueue{
+		pushCh: make(chan interface{}),
+		popCh:  make(chan chan interface{}),
+	}
+	go pq.loop(context.Background())
+	return pq
+}
+
+func (pq *PriorityQueue) loop(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case val := <-pq.pushCh:
+				heap.Push(&pq.queue, val)
+			case outCh := <-pq.popCh:
+				outCh <- heap.Pop(&pq.queue)
+			}
+		}
+	}()
 }
 
 func (pq *PriorityQueue) Push(x interface{}) {
-	heap.Push(&pq.queue, x)
+	pq.pushCh <- x
 	return
 }
 
+// Pop takes a value off the heap.
 func (pq *PriorityQueue) Pop() interface{} {
-	return heap.Pop(&pq.queue)
+	out := make(chan interface{})
+	pq.popCh <- out
+	return <-out
 }
 
-func (pq *PriorityQueue) Peek() (interface{}, bool) {
-	if pq.Len() > 0 {
-		return pq.queue.items[0], true
+func (pq *PriorityQueue) Peek() interface{} {
+	if pq.queue.Len() < 1 {
+		return nil
 	}
-	return nil, false
+	return pq.queue.items[0]
 }
 
 func (pq *PriorityQueue) Len() int {
 	return pq.queue.Len()
+}
+
+// priority queue is the underlying, non-thread safe slice implementing the heap interface.
+type priorityQueue struct {
+	items []Heapable
 }
 
 func (pq *priorityQueue) Len() int {

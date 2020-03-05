@@ -1,36 +1,63 @@
 package queue
 
-type Queue []interface{}
+import (
+	"context"
+)
 
-func NewQueue() Queue {
-	return nil
+type Queue struct {
+	queue
+	pushCh chan interface{}
+	popCh  chan chan interface{}
 }
 
-func (q *Queue) Push(val interface{}) {
-	*q = append(*q, val)
+func NewQueue() *Queue {
+	return &Queue{
+		pushCh: make(chan interface{}),
+		popCh:  make(chan chan interface{}),
+	}
 }
 
-func (q *Queue) Pop() interface{} {
+func (q *Queue) loop(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case val := <-q.pushCh:
+				q.queue.Push(val)
+			case outCh := <-q.popCh:
+				outCh <- q.queue.Pop()
+			}
+		}
+	}()
+}
+
+type queue struct {
+	items []interface{}
+}
+
+func (q *queue) Push(val interface{}) {
+	q.items = append(q.items, val)
+}
+
+func (q *queue) Pop() interface{} {
 	var head interface{}
-	if len(*q) < 1 {
-		return nil
+	if len(q.items) == 1 {
+		head, q.items = q.items[0], nil
 	}
-	if len(*q) == 1 {
-		head, *q = (*q)[0], nil
-	}
-	if len(*q) > 1 {
-		head, *q = (*q)[0], (*q)[1:]
+	if len(q.items) > 1 {
+		head, q.items = q.items[0], q.items[1:]
 	}
 	return head
 }
 
-func (q *Queue) Peek() interface{} {
-	if len(*q) < 1 {
+func (q *queue) Peek() interface{} {
+	if q.Len() < 1 {
 		return nil
 	}
-	return (*q)[0]
+	return q.items[0]
 }
 
-func (q *Queue) Len() int {
-	return len(*q)
+func (q *queue) Len() int {
+	return len(q.items)
 }

@@ -19,7 +19,7 @@ import (
 
 type WorkQueue struct {
 	waiting *priorityqueue.PriorityQueue
-	ready   queue.Queue
+	ready   *queue.Queue
 	out     chan interface{}
 }
 
@@ -69,8 +69,8 @@ func (w *WorkQueue) feed(ctx context.Context) {
 			now := time.Now()
 
 			// TODO(ace): should probably do something smarter here
-			head, ok := w.waiting.Peek()
-			if !ok {
+			head := w.waiting.Peek()
+			if head == nil {
 				continue
 			}
 
