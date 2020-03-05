@@ -4,6 +4,8 @@
 // Note that this package allows for non-blocking writes and blocking reads, which is rarely desirable in real world situations
 package broadcaster
 
+import "context"
+
 type message struct {
 	stream chan message
 	data   interface{}
@@ -22,13 +24,15 @@ type Receiver struct {
 }
 
 // create a new broadcaster object.
-func NewBroadcaster() Broadcaster {
+func NewBroadcaster(ctx context.Context) Broadcaster {
 	listenc := make(chan Listener)
 	sendc := make(chan interface{})
-	go func() {
+	go func(ctx context.Context) {
 		currc := make(chan message, 1)
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case sent := <-sendc:
 				if sent == nil {
 					currc <- message{}
@@ -42,7 +46,7 @@ func NewBroadcaster() Broadcaster {
 				recv <- currc
 			}
 		}
-	}()
+	}(ctx)
 	return Broadcaster{
 		listenc: listenc,
 		sendc:   sendc,
