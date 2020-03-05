@@ -2,11 +2,9 @@ package broker
 
 import (
 	"context"
-	"sync"
 )
 
 type Broker struct {
-	wg      sync.WaitGroup
 	msgCh   chan interface{}
 	subCh   chan chan interface{}
 	unsubCh chan chan interface{}
@@ -18,7 +16,6 @@ func NewBroker(ctx context.Context, buffer int) *Broker {
 		subCh:   make(chan chan interface{}, buffer),
 		unsubCh: make(chan chan interface{}, buffer),
 	}
-	b.wg.Add(1)
 	go b.loop(ctx)
 	return b
 }
@@ -58,10 +55,6 @@ func (b *Broker) loop(ctx context.Context) error {
 			}
 		}
 	}
-}
-
-func (b *Broker) Wait() {
-	b.wg.Wait()
 }
 
 func (b *Broker) Subscribe() chan interface{} {
