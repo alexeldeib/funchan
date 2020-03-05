@@ -9,7 +9,6 @@ package workqueue
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/alexeldeib/funchan/priorityqueue"
@@ -23,75 +22,71 @@ type WorkQueue struct {
 	out     chan interface{}
 }
 
-func NewWorkQueue() *WorkQueue {
-	return &WorkQueue{
+func NewWorkQueue(ctx context.Context) *WorkQueue {
+	wq := &WorkQueue{
 		waiting: priorityqueue.NewPriorityQueue(),
 		ready:   queue.NewQueue(context.Background()),
 		out:     make(chan interface{}, 1),
 	}
-}
 
-func (w *WorkQueue) Start(ctx context.Context) error {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		w.feed(ctx)
-		wg.Done()
-	}()
-	go func() {
-		w.drain(ctx)
-		wg.Done()
-	}()
-	for {
-		select {
-		case <-ctx.Done():
-			wg.Wait()
-			return ctx.Err()
-		}
+	routines := []func(ctx context.Context) error{
+		wq.feed,
+		wq.drain,
 	}
 
+	for _, fn := range routines {
+		do(ctx, fn)
+	}
+
+	return wq
 }
 
-func (w *WorkQueue) Push(item interface{}, when time.Time) {
-	w.waiting.Push(timedqueue.NewItem(item, when))
+func do(ctx context.Context, f func(ctx context.Context) error) {
+	go func() {
+		f(ctx)
+	}()
 }
 
-func (w *WorkQueue) Pop() interface{} {
-	return <-w.out
+func (wq *WorkQueue) Push(item interface{}, when time.Time) {
+	wq.waiting.Push(timedqueue.NewItem(item, when))
 }
 
-func (w *WorkQueue) feed(ctx context.Context) {
+func (wq *WorkQueue) Pop() interface{} {
+	return <-wq.out
+}
+
+func (wq *WorkQueue) feed(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		default:
 			now := time.Now()
 
 			// TODO(ace): should probably do something smarter here
-			head := w.waiting.Peek()
+			head := wq.waiting.Peek()
 			if head == nil {
 				continue
 			}
 
 			item := head.(*timedqueue.Item)
 			if now.After(item.Priority) {
-				head := w.waiting.Pop()
+				head := wq.waiting.Pop()
 				val := head.(*timedqueue.Item).Value
-				w.ready.Push(val)
+				wq.ready.Push(val)
 			}
 		}
 	}
 }
 
-func (w *WorkQueue) drain(ctx context.Context) {
+func (wq *WorkQueue) drain(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		default:
-			if w.ready.Peek() != nil {
-				w.out <- w.ready.Pop()
+			if wq.ready.Peek() != nil {
+				wq.out <- wq.ready.Pop()
 			}
 		}
 	}

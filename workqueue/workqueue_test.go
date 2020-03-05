@@ -9,12 +9,7 @@ import (
 )
 
 func Test_WorkQueue(t *testing.T) {
-	wq := workqueue.NewWorkQueue()
-	go func(t *testing.T) {
-		if err := wq.Start(context.Background()); err != nil {
-			t.Errorf("failed to start workqueue continuously: %#+v", err)
-		}
-	}(t)
+	wq := workqueue.NewWorkQueue(context.Background())
 
 	now := time.Now()
 	wq.Push("foo", now.Add(50*time.Millisecond))
@@ -45,26 +40,5 @@ func Test_WorkQueue(t *testing.T) {
 		if delay < low || delay > high {
 			t.Errorf("expected delay between %02d and %02d, got %02d", low, high, delay)
 		}
-	}
-}
-
-func Test_WorkQueueShutdown(t *testing.T) {
-	wq := workqueue.NewWorkQueue()
-
-	timeout, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
-	ctx, cancel := context.WithCancel(context.Background())
-	doneCtx, done := context.WithCancel(context.Background())
-
-	go func(t *testing.T) {
-		if err := wq.Start(ctx); err != nil {
-			done()
-		}
-	}(t)
-
-	cancel()
-	select {
-	case <-timeout.Done():
-		t.Errorf("failed to shut down work queue gracefully")
-	case <-doneCtx.Done():
 	}
 }

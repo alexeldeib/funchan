@@ -15,23 +15,44 @@ func NewQueue(ctx context.Context) *Queue {
 		pushCh: make(chan interface{}),
 		popCh:  make(chan chan interface{}),
 	}
-	go loop(ctx, q)
+	go q.loop(ctx)
 	return q
 }
 
-func loop(ctx context.Context, q *Queue) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case val := <-q.pushCh:
-				q.queue.Push(val)
-			case outCh := <-q.popCh:
-				outCh <- q.queue.Pop()
-			}
+func (q *Queue) loop(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case val := <-q.pushCh:
+			q.queue.Push(val)
+		case outCh := <-q.popCh:
+			outCh <- q.queue.Pop()
 		}
-	}()
+	}
+}
+
+func (q *Queue) Push(x interface{}) {
+	q.pushCh <- x
+	return
+}
+
+// Pop takes a value off the heap.
+func (q *Queue) Pop() interface{} {
+	out := make(chan interface{})
+	q.popCh <- out
+	return <-out
+}
+
+func (q *Queue) Peek() interface{} {
+	if q.queue.Len() < 1 {
+		return nil
+	}
+	return q.queue.items[0]
+}
+
+func (q *Queue) Len() int {
+	return q.queue.Len()
 }
 
 type queue struct {
