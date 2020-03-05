@@ -4,21 +4,21 @@ import (
 	"context"
 )
 
-type broker struct {
+type Broker struct {
 	msgCh   chan interface{}
 	subCh   chan chan interface{}
 	unsubCh chan chan interface{}
 }
 
-func newBroker(buffer int) *broker {
-	return &broker{
+func NewBroker(buffer int) *Broker {
+	return &Broker{
 		msgCh:   make(chan interface{}, buffer),
 		subCh:   make(chan chan interface{}, buffer),
 		unsubCh: make(chan chan interface{}, buffer),
 	}
 }
 
-func (b *broker) start(ctx context.Context) error {
+func (b *Broker) Start(ctx context.Context) error {
 	subs := map[chan interface{}]struct{}{}
 
 	defer func() {
@@ -56,14 +56,16 @@ func (b *broker) start(ctx context.Context) error {
 	}
 }
 
-func (b *broker) subscribe(ch chan interface{}) {
+func (b *Broker) Subscribe() chan interface{} {
+	ch := make(chan interface{})
 	b.subCh <- ch
+	return ch
 }
 
-func (b *broker) unsubscribe(ch chan interface{}) {
+func (b *Broker) Unsubscribe(ch chan interface{}) {
 	b.unsubCh <- ch
 }
 
-func (b *broker) publish(msg interface{}) {
+func (b *Broker) Publish(msg interface{}) {
 	b.msgCh <- msg
 }

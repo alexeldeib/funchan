@@ -1,25 +1,26 @@
-package broker
+package broker_test
 
 import (
 	"context"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/alexeldeib/funchan/broker"
 )
 
 func Test_SinglePubSub(t *testing.T) {
-	b := newBroker(0)
+	b := broker.NewBroker(0)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func(t *testing.T) {
-		b.start(ctx)
+		b.Start(ctx)
 	}(t)
 
-	ch := make(chan interface{}, 0)
 	want := "hello, world!"
 
-	b.subscribe(ch)
-	b.publish(want)
+	ch := b.Subscribe()
+	b.Publish(want)
 
 	timeout := 1 * time.Second
 	select {
