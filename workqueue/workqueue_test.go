@@ -47,3 +47,24 @@ func Test_WorkQueue(t *testing.T) {
 		}
 	}
 }
+
+func Test_WorkQueueShutdown(t *testing.T) {
+	wq := workqueue.NewWorkQueue()
+
+	timeout, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	ctx, cancel := context.WithCancel(context.Background())
+	doneCtx, done := context.WithCancel(context.Background())
+
+	go func(t *testing.T) {
+		if err := wq.Start(ctx); err != nil {
+			done()
+		}
+	}(t)
+
+	cancel()
+	select {
+	case <-timeout.Done():
+		t.Errorf("failed to shut down work queue gracefully")
+	case <-doneCtx.Done():
+	}
+}
