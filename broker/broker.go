@@ -10,17 +10,20 @@ type Broker struct {
 	unsubCh chan chan interface{}
 }
 
-func NewBroker(buffer int) *Broker {
-	return &Broker{
+func NewBroker(ctx context.Context, buffer int) *Broker {
+	b := &Broker{
 		msgCh:   make(chan interface{}, buffer),
 		subCh:   make(chan chan interface{}, buffer),
 		unsubCh: make(chan chan interface{}, buffer),
 	}
+
+	go loop(ctx, b)
+
+	return b
 }
 
-func (b *Broker) Start(ctx context.Context) error {
+func loop(ctx context.Context, b *Broker) {
 	subs := map[chan interface{}]struct{}{}
-
 	defer func() {
 		for sub := range subs {
 			close(sub)
@@ -30,7 +33,7 @@ func (b *Broker) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		case sub := <-b.subCh:
 			subs[sub] = struct{}{}
 		case unsub := <-b.unsubCh:
@@ -45,7 +48,7 @@ func (b *Broker) Start(ctx context.Context) error {
 				for sub := range undelivered {
 					select {
 					case <-ctx.Done():
-						return ctx.Err()
+						return
 					case sub <- datum:
 						delete(undelivered, sub)
 					default:

@@ -27,29 +27,31 @@ type Receiver struct {
 func NewBroadcaster(ctx context.Context) Broadcaster {
 	listenc := make(chan Listener)
 	sendc := make(chan interface{})
-	go func(ctx context.Context) {
-		currc := make(chan message, 1)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case sent := <-sendc:
-				if sent == nil {
-					currc <- message{}
-					return
-				}
-				c := make(chan message, 1)
-				bcast := message{stream: c, data: sent}
-				currc <- bcast
-				currc = c
-			case recv := <-listenc:
-				recv <- currc
-			}
-		}
-	}(ctx)
+	go loop(ctx, sendc, listenc)
 	return Broadcaster{
 		listenc: listenc,
 		sendc:   sendc,
+	}
+}
+
+func loop(ctx context.Context, sendc chan interface{}, listenc chan Listener) {
+	currc := make(chan message, 1)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case sent := <-sendc:
+			if sent == nil {
+				currc <- message{}
+				return
+			}
+			c := make(chan message, 1)
+			bcast := message{stream: c, data: sent}
+			currc <- bcast
+			currc = c
+		case recv := <-listenc:
+			recv <- currc
+		}
 	}
 }
 

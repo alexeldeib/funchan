@@ -10,12 +10,9 @@ import (
 )
 
 func Test_SinglePubSub(t *testing.T) {
-	b := broker.NewBroker(0)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go func(t *testing.T) {
-		b.Start(ctx)
-	}(t)
+	b := broker.NewBroker(ctx, 0)
 
 	want := "hello, world!"
 
