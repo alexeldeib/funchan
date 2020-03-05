@@ -10,14 +10,16 @@ type Queue struct {
 	popCh  chan chan interface{}
 }
 
-func NewQueue() *Queue {
-	return &Queue{
+func NewQueue(ctx context.Context) *Queue {
+	q := &Queue{
 		pushCh: make(chan interface{}),
 		popCh:  make(chan chan interface{}),
 	}
+	go loop(ctx, q)
+	return q
 }
 
-func (q *Queue) loop(ctx context.Context) {
+func loop(ctx context.Context, q *Queue) {
 	go func() {
 		for {
 			select {

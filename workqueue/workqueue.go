@@ -26,7 +26,7 @@ type WorkQueue struct {
 func NewWorkQueue() *WorkQueue {
 	return &WorkQueue{
 		waiting: priorityqueue.NewPriorityQueue(),
-		ready:   queue.NewQueue(),
+		ready:   queue.NewQueue(context.Background()),
 		out:     make(chan interface{}, 1),
 	}
 }

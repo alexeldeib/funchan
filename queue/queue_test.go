@@ -1,13 +1,14 @@
 package queue_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/alexeldeib/funchan/queue"
 )
 
 func Test_Queue(t *testing.T) {
-	q := queue.NewQueue()
+	q := queue.NewQueue(context.Background())
 	want := []interface{}{"foo", "bar", "baz"}
 
 	for i := range want {

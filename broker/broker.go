@@ -16,9 +16,7 @@ func NewBroker(ctx context.Context, buffer int) *Broker {
 		subCh:   make(chan chan interface{}, buffer),
 		unsubCh: make(chan chan interface{}, buffer),
 	}
-
 	go loop(ctx, b)
-
 	return b
 }
 
