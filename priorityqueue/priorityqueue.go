@@ -3,12 +3,16 @@ package priorityqueue
 import (
 	"container/heap"
 	"context"
+
+	"github.com/alexeldeib/funchan/queue"
 )
 
 type Heapable interface {
 	Less(priority interface{}) bool
 	SetIndex(i int)
 }
+
+var _ queue.Interface = &PriorityQueue{}
 
 type PriorityQueue struct {
 	queue  priorityQueue
